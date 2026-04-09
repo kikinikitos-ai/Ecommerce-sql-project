@@ -1,0 +1,145 @@
+-- 1. Total Revenue
+SELECT 
+    SUM(oi.quantity * oi.price) AS total_revenue
+FROM order_items oi
+JOIN orders o
+    ON oi.order_id = o.order_id
+WHERE o.order_status IN ('Delivered', 'Shipped');
+ 
+
+-- 2. Total Orders
+SELECT
+    COUNT(*) AS total_orders
+FROM orders
+WHERE order_status IN ('Delivered', 'Shipped');
+
+
+-- 3. Average Order Value (AOV)
+SELECT
+    AVG(order_total) AS avg_order_value
+FROM (
+    SELECT
+        o.order_id,
+        SUM(oi.quantity * oi.price) AS order_total
+    FROM orders o
+    JOIN order_items oi
+        ON o.order_id = oi.order_id
+    WHERE o.order_status IN ('Delivered', 'Shipped')
+    GROUP BY o.order_id
+) t;
+
+
+-- 4. Revenue by Month
+SELECT
+    DATE_FORMAT(o.order_date, '%Y-%m') AS month,
+    SUM(oi.quantity * oi.price) AS revenue
+FROM orders o
+JOIN order_items oi
+    ON o.order_id = oi.order_id
+WHERE o.order_status IN ('Delivered', 'Shipped')
+GROUP BY DATE_FORMAT(o.order_date, '%Y-%m')
+ORDER BY month;
+
+
+-- 5. Refunds by Month
+SELECT
+    DATE_FORMAT(return_date, '%Y-%m') AS month,
+    SUM(refund_amount) AS refunds
+FROM returns
+GROUP BY DATE_FORMAT(return_date, '%Y-%m')
+ORDER BY month;
+
+
+-- 6. Net Revenue by Month
+SELECT
+    r.month,
+    r.revenue,
+    IFNULL(f.refunds, 0) AS refunds,
+    r.revenue - IFNULL(f.refunds, 0) AS net_revenue
+FROM (
+    SELECT
+        DATE_FORMAT(o.order_date, '%Y-%m') AS month,
+        SUM(oi.quantity * oi.price) AS revenue
+    FROM orders o
+    JOIN order_items oi
+        ON o.order_id = oi.order_id
+    WHERE o.order_status IN ('Delivered', 'Shipped')
+    GROUP BY DATE_FORMAT(o.order_date, '%Y-%m')
+) r
+LEFT JOIN (
+    SELECT
+        DATE_FORMAT(return_date, '%Y-%m') AS month,
+        SUM(refund_amount) AS refunds
+    FROM returns
+    GROUP BY DATE_FORMAT(return_date, '%Y-%m')
+) f
+    ON r.month = f.month;
+
+
+-- 7. Top 10 Products
+SELECT
+    p.product_name,
+    SUM(oi.quantity * oi.price) AS revenue
+FROM order_items oi
+JOIN products p 
+    ON oi.product_id = p.product_id
+JOIN orders o 
+    ON oi.order_id = o.order_id
+WHERE o.order_status IN ('Delivered', 'Shipped')
+GROUP BY p.product_name
+ORDER BY revenue DESC
+LIMIT 10;
+
+
+-- 8. Revenue by Category
+SELECT
+    p.category,
+    SUM(oi.quantity * oi.price) AS revenue
+FROM order_items oi
+JOIN products p 
+    ON oi.product_id = p.product_id
+JOIN orders o 
+    ON oi.order_id = o.order_id
+WHERE o.order_status IN ('Delivered', 'Shipped')
+GROUP BY p.category
+ORDER BY revenue DESC;
+
+
+-- 9. Category Share %
+SELECT
+    p.category,
+    ROUND(SUM(oi.quantity * oi.price), 2) AS revenue,
+    ROUND(
+        SUM(oi.quantity * oi.price) /
+        (
+            SELECT SUM(oi2.quantity * oi2.price)
+            FROM order_items oi2
+            JOIN orders o2
+                ON oi2.order_id = o2.order_id
+            WHERE o2.order_status IN ('Delivered', 'Shipped')
+        ) * 100,
+        2
+    ) AS percent_share
+FROM order_items oi
+JOIN products p 
+    ON oi.product_id = p.product_id
+JOIN orders o 
+    ON oi.order_id = o.order_id
+WHERE o.order_status IN ('Delivered', 'Shipped')
+GROUP BY p.category
+ORDER BY revenue DESC;
+
+
+-- 10. Top Customers
+SELECT
+    c.customer_name,
+    SUM(oi.quantity * oi.price) AS total_spent
+FROM customers c
+JOIN orders o 
+    ON c.customer_id = o.customer_id
+JOIN order_items oi 
+    ON o.order_id = oi.order_id
+WHERE o.order_status IN ('Delivered', 'Shipped')
+GROUP BY c.customer_name
+ORDER BY total_spent DESC
+LIMIT 10;
