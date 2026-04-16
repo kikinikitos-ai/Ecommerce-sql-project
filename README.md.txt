@@ -91,6 +91,9 @@ Synthetic e-commerce dataset created for analytical practice.
 
 ## Power BI Dashboard
 
+### Download Dashboard
+[Download Power BI file](ecommerce_sales_dashboard.pbix)
+
 ### Full Dashboard
 ![Dashboard](screenshots/dashboard_full.png)
 
